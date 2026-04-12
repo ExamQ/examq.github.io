@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <title>Homepage Profesor</title>
+  <link rel="stylesheet" href="homepage.css">
+  <style>
+    .botones-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 50px);
+      grid-gap: 5px;
+      margin-top: 5px;
+    }
+    .botones-grid button {
+      width: 50px;
+      height: 50px;
+    }
+    .logout-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Evaluaciones creadas</h1>
+    <ul id="lista-evaluaciones"></ul>
+    <button id="crear" class="btn btn-green"> Crear nueva evaluación</button>
+  </div>
+<button id="logout" class="btn btn-red logout-btn"><i data-lucide="log-out"></i></button>
+  <script type="module">
+    import { auth, db } from "./firebase.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+    import { collection, getDocs, query, where, doc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+    const listaEl = document.getElementById("lista-evaluaciones");
+    let currentUid = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "login.html"; // redirige si no está logueado
+      } else {
+        currentUid = user.uid;
+        cargarEvaluaciones(user.uid); // carga solo las evaluaciones del profesor
+      }
+    });
+
+    async function cargarEvaluaciones(uid) {
+      listaEl.innerHTML = "";
+
+      // 👇 solo las evaluaciones del profesor actual
+      const q = query(collection(db, "evaluaciones"), where("owner", "==", uid));
+      const snapshot = await getDocs(q);
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const li = document.createElement("li");
+        li.className = "item";
+        li.innerHTML = `
+          <strong>${data.nombre || docSnap.id}</strong>
+          <div class="botones-grid">
+            <button onclick="window.location.href='profesor.html?id=${docSnap.id}'"><i data-lucide="folder-open"></i></button>
+            <button onclick="window.editarEvaluacion('${docSnap.id}')"><i data-lucide="edit"></i></button>
+            <button onclick="window.duplicarEvaluacion('${docSnap.id}')"><i data-lucide="copy"></i></button>
+            <button onclick="window.eliminarEvaluacion('${docSnap.id}')"><i data-lucide="trash-2"></i></button>
+          </div>
+        `;
+        listaEl.appendChild(li);
+      });
+
+      window.lucide.createIcons();
+    }
+
+    window.editarEvaluacion = (id) => {
+      window.location.href = `editar.html?id=${id}`;
+    };
+
+    window.duplicarEvaluacion = async (id) => {
+      const ref = doc(db, "evaluaciones", id);
+      const snap = await getDocs(collection(db, "evaluaciones"));
+      const original = snap.docs.find(d => d.id === id);
+      if (!original) return;
+      const data = original.data();
+
+      await addDoc(collection(db, "evaluaciones"), {
+        nombre: "Copia de " + data.nombre,
+        listaEstudiantes: data.listaEstudiantes,
+        metodoEvaluacion: data.metodoEvaluacion,
+        actual: 0,
+        rechazadosPrimeraVuelta: [],
+        segundaVuelta: [],
+        reprobados: [],
+        finalizada: false,
+        owner: currentUid
+      });
+
+      alert("✅ Evaluación duplicada correctamente.");
+      if (currentUid) cargarEvaluaciones(currentUid);
+    };
+
+    window.eliminarEvaluacion = async (id) => {
+      if (!confirm("¿Estás seguro de que quieres eliminar esta evaluación?")) return; 
+      await deleteDoc(doc(db, "evaluaciones", id));
+      if (currentUid) cargarEvaluaciones(currentUid);
+    };
+
+    document.getElementById("crear").onclick = () => {
+      window.location.href = "crear.html";
+    };
+
+    document.getElementById("logout").onclick = async () => {
+      await signOut(auth);
+      window.location.href = "login.html"; // redirige al login
+    };
+  </script>
+</body>
+</html>

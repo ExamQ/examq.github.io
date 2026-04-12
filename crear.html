@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <title>Crear Evaluación</title>
+  <link rel="stylesheet" href="crear.css">
+  <style>
+    #preview {
+      display: none;
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-top: 20px;
+      background: #f9f9f9;
+    }
+    #preview h2 {
+      margin-top: 0;
+    }
+    #preview-list {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    #preview-list li {
+      margin: 3px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Crear nueva evaluación</h1>
+
+    <!-- Nombre de la evaluación -->
+    <label for="nombre">Nombre de la evaluación:</label><br>
+    <input type="text" id="nombre" class="input" placeholder="Ej: Examen Oral Abril"><br><br>
+
+    <!-- Subir archivo -->
+    <label for="archivo">Subir lista de estudiantes (Word, Excel, PDF):</label><br>
+    <input type="file" id="archivo" accept=".doc,.docx,.xls,.xlsx,.pdf"><br><br>
+
+    <!-- Ingresar manualmente -->
+    <label for="manual">Ingresar lista manualmente (separada por comas):</label><br>
+    <textarea id="manual" rows="4" cols="40" placeholder="Ej: Ana, Pedro, María"></textarea><br><br>
+
+    <!-- Método de evaluación -->
+    <h2>Método de evaluación</h2>
+    <label><input type="radio" name="metodo" value="un-llamado" checked> Un llamado</label><br>
+    <label><input type="radio" name="metodo" value="voluntarios"> Lista de voluntarios</label><br>
+    <textarea id="voluntarios" rows="3" cols="40" placeholder="Lista de voluntarios (si aplica)" style="display:none;"></textarea><br>
+    <label><input type="radio" name="metodo" value="doble-llamado"> Doble llamado</label><br>
+
+    <br>
+    <button id="guardar" class="btn btn-green"><i data-lucide="save"></i> Guardar evaluación</button>
+    <button id="volver" class="btn btn-blue"><i data-lucide="arrow-left"></i> Volver al inicio</button>
+
+    <div id="estado" class="estado"></div>
+
+    <!-- Vista previa -->
+    <div id="preview">
+      <h2>Vista previa de la lista</h2>
+      <p><strong>Nombre:</strong> <span id="preview-nombre"></span></p>
+      <p><strong>Método:</strong> <span id="preview-metodo"></span></p>
+      <ul id="preview-list"></ul>
+      <button id="confirmar" class="btn btn-green"><i data-lucide="check"></i> Confirmar</button>
+      <button id="editar" class="btn btn-orange"><i data-lucide="edit"></i> Editar</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+    import { collection, addDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+    const auth = getAuth();
+    const voluntariosBox = document.getElementById("voluntarios");
+    document.querySelectorAll("input[name='metodo']").forEach(radio => {
+      radio.addEventListener("change", () => {
+        voluntariosBox.style.display = (radio.value === "voluntarios" && radio.checked) ? "block" : "none";
+      });
+    });
+
+    let listaFinal = [];
+    let nombreEval = "";
+    let metodoEval = "";
+
+    document.getElementById("guardar").onclick = () => {
+      nombreEval = document.getElementById("nombre").value || "Evaluación sin nombre";
+      const manual = document.getElementById("manual").value;
+      const lista = manual.split(",").map(s => s.trim()).filter(s => s);
+
+      metodoEval = document.querySelector("input[name='metodo']:checked").value;
+      const voluntarios = document.getElementById("voluntarios").value.split(",").map(s => s.trim()).filter(s => s);
+
+      listaFinal = lista;
+
+      if (metodoEval === "voluntarios" && voluntarios.length > 0) {
+        listaFinal = [...voluntarios];
+        lista.forEach(est => {
+          if (!voluntarios.includes(est)) {
+            listaFinal.push(est);
+          }
+        });
+      }
+
+      // Mostrar vista previa
+      document.getElementById("preview-nombre").innerText = nombreEval;
+      document.getElementById("preview-metodo").innerText = metodoEval;
+      const ul = document.getElementById("preview-list");
+      ul.innerHTML = "";
+      listaFinal.forEach(est => {
+        const li = document.createElement("li");
+        li.innerText = est;
+        ul.appendChild(li);
+      });
+
+      document.getElementById("preview").style.display = "block";
+      document.getElementById("estado").innerText = "";
+    };
+
+    document.getElementById("confirmar").onclick = async () => {
+      await addDoc(collection(db, "evaluaciones"), {
+        nombre: nombreEval,
+        owner: auth.currentUser.uid,
+        listaEstudiantes: listaFinal,
+        listaOriginal: listaFinal,
+        actual: 0,
+        rechazadosPrimeraVuelta: [],
+        segundaVuelta: [],
+        reprobados: [],
+        metodoEvaluacion: metodoEval,
+      });
+      document.getElementById("estado").innerHTML = '<i data-lucide="check"></i> Evaluación creada correctamente.';
+      document.getElementById("preview").style.display = "none";
+    };
+
+    document.getElementById("editar").onclick = () => {
+      document.getElementById("preview").style.display = "none";
+      document.getElementById("estado").innerHTML = '<i data-lucide="pencil"></i> Puedes editar la información antes de guardar.';
+      window.lucide.createIcons();
+    };
+
+    document.getElementById("volver").onclick = () => {
+      window.location.href = "homepage.html";
+    };
+
+      window.lucide.createIcons();
+  </script>
+</body>
+</html>

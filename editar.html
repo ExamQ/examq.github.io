@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <title>Editar Evaluación</title>
+  <link rel="stylesheet" href="crear.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Editar evaluación</h1>
+
+    <!-- Nombre de la evaluación -->
+    <label for="nombre">Nombre de la evaluación:</label><br>
+    <input type="text" id="nombre" class="input"><br><br>
+
+    <!-- Ingresar manualmente -->
+    <label for="manual">Lista de estudiantes (separada por comas):</label><br>
+    <textarea id="manual" rows="4" cols="40"></textarea><br><br>
+
+    <!-- Método de evaluación -->
+    <h2>Método de evaluación</h2>
+    <label><input type="radio" name="metodo" value="un-llamado"> Un llamado</label><br>
+    <label><input type="radio" name="metodo" value="voluntarios"> Lista de voluntarios</label><br>
+    <textarea id="voluntarios" rows="3" cols="40" placeholder="Lista de voluntarios (si aplica)" style="display:none;"></textarea><br>
+    <label><input type="radio" name="metodo" value="doble-llamado"> Doble llamado</label><br>
+
+    <br>
+    <button id="guardar" class="btn btn-green"><i data-lucide="save"></i> Guardar cambios</button>
+    <button id="volver" class="btn btn-blue"><i data-lucide="arrow-left"></i> Volver al inicio</button>
+
+    <div id="estado" class="estado"></div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+    import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+    const auth = getAuth();
+    const voluntariosBox = document.getElementById("voluntarios");
+    document.querySelectorAll("input[name='metodo']").forEach(radio => {
+      radio.addEventListener("change", () => {
+        voluntariosBox.style.display = (radio.value === "voluntarios" && radio.checked) ? "block" : "none";
+      });
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const evalId = params.get("id");
+    const ref = doc(db, "evaluaciones", evalId);
+
+    let listaFinal = [];
+
+    // 🔎 Cargar datos existentes
+    async function cargarDatos() {
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        document.getElementById("estado").innerHTML = '<i data-lucide="alert-triangle"></i> Evaluación no encontrada.';
+        window.lucide.createIcons();
+        return;
+      }
+      const data = snap.data();
+
+      document.getElementById("nombre").value = data.nombre || "";
+      document.getElementById("manual").value = (data.listaEstudiantes || []).join(", ");
+      document.getElementById("voluntarios").value = (data.listaVoluntarios || []).join(", ");
+
+      // Seleccionar método
+      const metodo = data.metodoEvaluacion || "un-llamado";
+      document.querySelectorAll("input[name='metodo']").forEach(radio => {
+        radio.checked = (radio.value === metodo);
+      });
+      voluntariosBox.style.display = (metodo === "voluntarios") ? "block" : "none";
+    }
+
+    cargarDatos();
+
+    // 💾 Guardar cambios
+    document.getElementById("guardar").onclick = async () => {
+      const nombreEval = document.getElementById("nombre").value || "Evaluación sin nombre";
+      const lista = document.getElementById("manual").value.split(",").map(s => s.trim()).filter(s => s);
+      const metodoEval = document.querySelector("input[name='metodo']:checked").value;
+      const voluntarios = document.getElementById("voluntarios").value.split(",").map(s => s.trim()).filter(s => s);
+
+      listaFinal = lista;
+
+      if (metodoEval === "voluntarios" && voluntarios.length > 0) {
+        listaFinal = [...voluntarios];
+        lista.forEach(est => {
+          if (!voluntarios.includes(est)) {
+            listaFinal.push(est);
+          }
+        });
+      }
+
+      await updateDoc(ref, {
+        nombre: nombreEval,
+        owner: auth.currentUser.uid,
+        listaEstudiantes: listaFinal,
+        listaOriginal: listaFinal,
+        listaVoluntarios: voluntarios,
+        metodoEvaluacion: metodoEval,
+        actual: 0, // reiniciamos el índice
+        finalizada: false // aseguramos que quede activa
+      });
+
+      document.getElementById("estado").innerHTML = '<i data-lucide="check"></i> Cambios guardados correctamente.';
+      window.lucide.createIcons();
+    };
+
+    document.getElementById("volver").onclick = () => {
+      window.location.href = "homepage.html";
+    };
+    window.lucide.createIcons();
+  </script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>App Estudiantes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="grid-container no-segunda">
+    <div id="nombre" class="card nombre"></div>
+    <div id="actual" class="card actual"></div>
+    <div id="siguiente" class="card siguiente"></div>
+    <div id="proximos" class="card proximos"></div>
+    <div id="contador" class="card contador"></div>
+    <!-- Este bloque es opcional, si no existe no afecta el layout -->
+    <div id="segunda-vuelta" class="card segunda-vuelta"></div>
+  </div>
+
+  <script type="module">
+  import { db } from "./firebase.js";
+  import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+  const params = new URLSearchParams(window.location.search);
+  const evalId = params.get("id");
+  const ref = doc(db, "evaluaciones", evalId);
+  const gridContainer = document.querySelector(".grid-container");
+
+  onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return;
+    const data = snap.data();
+
+    // Si evaluación finalizada
+    if (data.finalizada) {
+      document.body.innerHTML = `
+        <div style="text-align:center; margin-top:50px;">
+          <h1 style="font-size:2.5em; color:#c0392b;">Evaluación terminada</h1>
+          <p style="font-size:1.5em;">No quedan más estudiantes</p>
+        </div>
+      `;
+      return;
+    }
+
+    const lista = data.listaEstudiantes || [];
+    const actualIndex = data.actual || 0;
+
+    // Nombre completo de la evaluación
+    document.getElementById("nombre").innerHTML =
+      `<h2>Evaluación</h2><p>${data.nombre || "Sin nombre"}</p>`;
+
+    // Actual
+    document.getElementById("actual").innerHTML =
+      `<h2>Actual</h2><p>${lista[actualIndex] || "Ninguno"}</p>`;
+
+    // Siguiente
+    document.getElementById("siguiente").innerHTML =
+      `<h2>Siguiente</h2><p>${lista[actualIndex + 1] || "Ninguno"}</p>`;
+
+    // Próximos
+    const proximos = lista.slice(actualIndex + 2, actualIndex + 7);
+    document.getElementById("proximos").innerHTML =
+      `<h2>Próximos</h2><p>${proximos.join(", ") || "Ninguno"}</p>`;
+
+    // Contador
+    const restantes = lista.length - (actualIndex + 1);
+    document.getElementById("contador").innerHTML =
+      `<h2>Restantes</h2><p>${restantes}</p>`;
+
+    // Segunda vuelta (solo contador en primer llamado)
+    const segundaVueltaEl = document.getElementById("segunda-vuelta");
+    if (data.metodoEvaluacion === "doble-llamado") {
+      if ((data.rechazadosPrimeraVuelta || []).length > 0 && (!data.segundaVuelta || data.segundaVuelta.length === 0)) {
+        segundaVueltaEl.style.display = "block";
+        segundaVueltaEl.innerHTML =
+          `<h2>Segunda vuelta</h2><p>${data.rechazadosPrimeraVuelta.length}</p>`;
+        gridContainer.classList.add("has-segunda");
+        gridContainer.classList.remove("no-segunda");
+      } else {
+        segundaVueltaEl.style.display = "none";
+        gridContainer.classList.add("no-segunda");
+        gridContainer.classList.remove("has-segunda");
+      }
+    } else {
+      segundaVueltaEl.style.display = "none";
+      gridContainer.classList.add("no-segunda");
+      gridContainer.classList.remove("has-segunda");
+    }
+
+    if (data.pausada) {
+      document.body.innerHTML = `
+        <div style="text-align:center; margin-top:50px;">
+          <h1 style="font-size:2.5em; color:#e67e22;">Evaluación en pausa</h1>
+          <p style="font-size:1.5em;">${data.mensajePausa}</p>
+        </div>
+      `;
+      return;
+}
+  });
+</script>
+</body>
+</html>
