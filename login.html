@@ -1,45 +1,65 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login Profesor</title>
+  <link rel="stylesheet" href="login.css">
 </head>
 <body>
-  <h1>Ingreso al Panel</h1>
-  <input type="email" id="email" placeholder="Correo">
-  <input type="password" id="password" placeholder="Contraseña">
-  <button id="login">Ingresar</button>
-  <button id="registro">Registrarse</button>
-  <div id="estado"></div>
+  <div class="login-container">
+    <!-- Logo -->
+    <div class="logo">
+      <img src="logotipo_docente.png" alt="Logotipo">
+    </div>
 
-<script type="module">
-  import { auth } from "./firebase.js";
-  import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+    <!-- Formulario -->
+    <div class="form">
+      <input type="email" id="email" placeholder="Correo">
+      <input type="password" id="password" placeholder="Contraseña">
+      <div class="buttons">
+        <button id="login">Ingresar</button>
+        <button id="registro">Registrarse</button>
+      </div>
+      <div id="estado"></div>
+    </div>
 
-  const estadoEl = document.getElementById("estado");
+    <!-- Botón volver -->
+    <div class="volver">
+      <a href="index.html" class="btn-volver">Volver</a>
+    </div>
+  </div>
 
-  document.getElementById("login").onclick = async () => {
-    const email = document.getElementById("email").value;
-    const pass = document.getElementById("password").value;
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      estadoEl.innerText = "✅ Ingreso exitoso";
-      window.location.href = "homepage.html";
-    } catch (e) {
-      estadoEl.innerText = "❌ Error: " + e.message;
-    }
-  };
+  <script type="module">
+    import { auth } from "./firebase.js";
+    import { signInWithEmailAndPassword, createUserWithEmailAndPassword } 
+      from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
-  document.getElementById("registro").onclick = async () => {
-    const email = document.getElementById("email").value;
-    const pass = document.getElementById("password").value;
-    try {
-      await createUserWithEmailAndPassword(auth, email, pass);
-      estadoEl.innerText = "✅ Registro exitoso";
-      window.location.href = "homepage.html";
-    } catch (e) {
-      estadoEl.innerText = "❌ Error: " + e.message;
-    }
-  };
-</script>
+    const estadoEl = document.getElementById("estado");
+
+    document.getElementById("login").onclick = async () => {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        estadoEl.innerText = "Ingreso exitoso";
+        window.location.href = "profesor.html";
+      } catch (e) {
+        estadoEl.innerText = "Error: " + e.message;
+      }
+    };
+
+    document.getElementById("registro").onclick = async () => {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+      try {
+        await createUserWithEmailAndPassword(auth, email, pass);
+        estadoEl.innerText = "Registro exitoso";
+        window.location.href = "profesor.html";
+      } catch (e) {
+        estadoEl.innerText = "Error: " + e.message;
+      }
+    };
+  </script>
 </body>
 </html>

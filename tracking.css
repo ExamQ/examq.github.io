@@ -1,0 +1,117 @@
+/* Fondo y tipografía */
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+  background: #f5f5f5; /* gris claro */
+  color: #333;
+}
+
+/* Contenedor principal del grid */
+.grid-container {
+  display: grid;
+  height: calc(100vh - 60px); /* limita al alto del display, dejando espacio para header */
+  gap: 10px;
+  padding: 10px;
+}
+
+/* Layout vertical (portrait) */
+@media (orientation: portrait) {
+  .grid-container {
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+  }
+
+  #actual { grid-column: 1 / span 6; grid-row: 1 / span 2; }
+  #siguiente { grid-column: 1 / span 6; grid-row: 3 / span 1; }
+
+  /* Tres boxes si doble llamado */
+  #segunda-vuelta { grid-column: 1 / span 2; grid-row: 4 / span 2; }
+  #proximos { grid-column: 3 / span 2; grid-row: 4 / span 2; }
+  #restantes { grid-column: 5 / span 2; grid-row: 4 / span 2; }
+
+  /* Si no hay segunda vuelta */
+  .no-segunda #proximos { grid-column: 1 / span 3; grid-row: 4 / span 2; }
+  .no-segunda #restantes { grid-column: 4 / span 3; grid-row: 4 / span 2; }
+}
+
+/* Layout horizontal (landscape) */
+@media (orientation: landscape) {
+  .grid-container {
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+  }
+
+  #actual { grid-column: 1 / span 2; grid-row: 1 / span 2; }
+  #siguiente { grid-column: 1 / span 2; grid-row: 3 / span 1; }
+  #segunda-vuelta { grid-column: 3 / span 1; grid-row: 1 / span 2; }
+  #proximos { grid-column: 4 / span 3; grid-row: 1 / span 2; }
+  #restantes { grid-column: 4 / span 3; grid-row: 3 / span 1; }
+
+  /* Si no hay segunda vuelta */
+  .no-segunda #proximos { grid-column: 3 / span 4; grid-row: 1 / span 2; }
+  .no-segunda #restantes { grid-column: 3 / span 4; grid-row: 3 / span 1; }
+}
+
+/* Estilo general de boxes */
+.box {
+  background: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column; /* título arriba, contenido debajo */
+}
+
+/* Títulos */
+.box h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 4px;
+}
+
+/* Contenido por defecto */
+.box div {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Ajustes específicos */
+#actual div {
+  font-size: 36px;
+  font-weight: bold;
+}
+
+#siguiente div {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+/* Próximos: lista vertical */
+#proximos-content {
+  display: flex;
+  flex-direction: column; /* apila nombres en columna */
+  align-items: flex-start; /* alineados a la izquierda */
+  justify-content: flex-start; /* pegados arriba */
+  overflow-y: auto;
+}
+
+#proximos-content div {
+  font-size: 16px;
+  margin: 4px 0;
+  width: 100%; /* cada nombre ocupa toda la fila */
+}
+
+/* Restantes y segunda vuelta */
+#restantes div,
+#segunda-vuelta div {
+  font-size: 18px;
+  font-weight: bold;
+}

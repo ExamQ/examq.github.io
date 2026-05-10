@@ -1,0 +1,96 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+  color: #fff;
+  background: linear-gradient(to bottom, #000060, #000000); /* degradado vertical */
+}
+
+/* Contenedor principal */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+  width: 100%;
+  max-width: 480px; /* franja vertical centrada */
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* Logo ocupa el tercio superior */
+.logo {
+  flex: 0 0 33%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.logo img {
+  max-height: 70%;
+  max-width: 80%;
+}
+
+/* Formulario */
+.form {
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.form input {
+  width: 80%;
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 16px;
+}
+
+.buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.buttons button {
+  flex: 1;
+  padding: 12px;
+  background-color: #2980b9;
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.buttons button:hover {
+  background-color: #1f6391;
+}
+
+#estado {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+/* Botón volver en la parte inferior */
+.volver {
+  margin-bottom: 20px;
+}
+.btn-volver {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #444;
+  color: #fff;
+  text-decoration: none;
+  font-size: 16px;
+  border-radius: 6px;
+  transition: background-color 0.3s;
+}
+.btn-volver:hover {
+  background-color: #222;
+}

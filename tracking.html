@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Tracking Evaluación</title>
+  <link rel="stylesheet" href="tracking.css">
+</head>
+
+<header style="display:flex;align-items:center;justify-content:space-between;background-color:#000032;color:#fff;padding:10px 20px;">
+  <!-- Isologo -->
+  <div class="logo">
+    <img src="isologo.png" alt="Isologo" style="height:40px;">
+  </div>
+
+  <!-- Nombre de la evaluación centrado -->
+  <h1 style="flex:1;text-align:center;margin:0;font-size:20px;color:#fff;">
+    <!-- Se rellena dinámicamente con el nombre -->
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      document.currentScript.parentElement.textContent = params.get("nombre") || "Evaluación";
+    </script>
+  </h1>
+
+  <!-- Botón volver -->
+  <button onclick="window.location.href='estudiante.html'" style="background:none;border:1px solid #fff;border-radius:4px;width:40px;height:40px;cursor:pointer;color:#fff;">
+    <i data-lucide="arrow-left"></i>
+  </button>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+</header>
+
+<body>
+  <!-- Header reservado -->
+  <header id="header"></header>
+
+  <!-- Contenedor principal -->
+  <!-- Usa la clase no-segunda si el método es "un-llamado" -->
+  <div class="grid-container">
+    <!-- Estudiante actual -->
+    <div id="actual" class="box actual">
+      <h3>Actual</h3>
+      <div id="actual-content">Estudiante actual</div>
+    </div>
+
+    <!-- Siguiente -->
+    <div id="siguiente" class="box siguiente">
+      <h3>Siguiente</h3>
+      <div id="siguiente-content">Próximo estudiante</div>
+    </div>
+
+    <!-- Segunda vuelta -->
+    <div id="segunda-vuelta" class="box segunda-vuelta">
+      <h3>Segunda vuelta</h3>
+      <div id="segunda-content">0</div>
+    </div>
+
+    <!-- Próximos -->
+    <div id="proximos" class="box proximos">
+      <h3>Próximos</h3>
+      <div id="proximos-content">Lista de próximos</div>
+    </div>
+
+    <!-- Restantes -->
+    <div id="restantes" class="box restantes">
+      <h3>Restantes</h3>
+      <div id="restantes-content">Quedan 0</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+    const params = new URLSearchParams(window.location.search);
+    const evalId = params.get("id");
+    const ref = doc(db, "evaluaciones", evalId);
+
+    async function cargarEvaluacion() {
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+
+      // Actual
+      document.getElementById("actual-content").innerText =
+        data.listaEstudiantes[data.actual] || "Nadie en turno";
+
+      // Siguiente
+      document.getElementById("siguiente-content").innerText =
+        data.listaEstudiantes[data.actual + 1] || "Sin siguiente";
+
+      // Próximos
+      const proximos = data.listaEstudiantes.slice(data.actual + 2, data.actual + 6);
+      document.getElementById("proximos-content").innerHTML =
+        proximos.map(n => `<div>${n}</div>`).join("") || "Sin próximos";
+
+      // Restantes
+      const restantes = data.listaEstudiantes.length - (data.actual + 1);
+      document.getElementById("restantes-content").innerText = `Quedan ${restantes}`;
+
+      // Segunda vuelta
+      if (data.metodoEvaluacion === "doble-llamado") {
+        document.querySelector(".grid-container").classList.remove("no-segunda");
+        document.getElementById("segunda-vuelta").style.display = "block";
+        document.getElementById("segunda-content").innerText =
+          data.segundaVuelta.length || 0;
+      } else {
+        document.querySelector(".grid-container").classList.add("no-segunda");
+        document.getElementById("segunda-vuelta").style.display = "none";
+      }
+    }
+
+    cargarEvaluacion();
+  </script>
+</body>
+</html>

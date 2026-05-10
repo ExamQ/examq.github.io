@@ -1,261 +1,121 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <meta charset="UTF-8">
   <title>Panel Profesor</title>
   <link rel="stylesheet" href="profesor.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
-  <div class="container">
-    <h1>Panel de Evaluación</h1>
 
-    <div id="info"></div>
-    <div id="display-profesor" class="display-profesor">
-      <h2>Actual:</h2>
-      <p id="prof-actual">---</p>
-
-      <h2>Siguiente:</h2>
-      <p id="prof-siguiente">---</p>
-
-      <h2>Restantes:</h2>
-      <p id="prof-restantes">---</p>
-    </div>
-
-    <!-- Controles principales -->
-    <button id="siguiente" class="btn btn-green"><i data-lucide="arrow-right"></i> Siguiente estudiante</button>
-    <button id="rechazo" class="btn btn-red"><i data-lucide="x-circle"></i> Marcar rechazo</button>
-    <button id="segunda" class="btn btn-orange" style="display:none;"><i data-lucide="refresh-cw"></i> Iniciar segunda vuelta</button>
-    <button id="volver" class="btn btn-blue"><i data-lucide="arrow-left"></i> Volver al inicio</button>
-    <button id="terminar" class="btn btn-gray" style="display:none;"><i data-lucide="flag-checkered"></i> Terminar evaluación</button>
-    <button id="descargar" class="btn btn-purple" style="display:none;"><i data-lucide="download"></i> Descargar reprobados</button>
-    <button id="pausar" class="btn btn-gray"><i data-lucide="octagon-pause"></i> Pausar</button>
-    <button id="reanudar" class="btn btn-green" style="display:none;"><i data-lucide="play"></i> Reanudar</button>
-<div class="pausa-input">
-    <input type="text" id="mensajePausa" placeholder="Mensaje de pausa (ej: Almuerzo, mañana, etc.)">
-    <button id="actualizarPausa" class="btn btn-small"><i data-lucide="arrow-right"></i></button>
-</div>
-
-    <div id="estado" class="estado"></div>
+<header style="display:flex;align-items:center;justify-content:space-between;background-color:#000032;color:#fff;padding:10px 20px;">
+  <!-- Isologo -->
+  <div class="logo">
+    <img src="isologo.png" alt="Isologo" style="height:40px;">
   </div>
 
-<script type="module">
-    import { db } from "./firebase.js";
-    import { doc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+  <!-- Título centrado -->
+  <h1 style="flex:1;text-align:center;margin:0;font-size:30px;color:#fff;">Panel docente</h1>
 
-    const params = new URLSearchParams(window.location.search);
-    const evalId = params.get("id");
-    const ref = doc(db, "evaluaciones", evalId);
+  <!-- Logout -->
+  <button onclick="window.location.href='index.html'" style="background:none;border:none;cursor:pointer;color:#fff;">
+    <i data-lucide="log-out"></i>
+  </button>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+</header>
+<body>
+  <div class="container">
+    <h2>Evaluaciones creadas</h2>
+    <ul id="lista-evaluaciones"></ul>
+    <button id="crear" class="btn btn-green">Crear nueva evaluación</button>
+  </div>
 
-    const segundaBtn = document.getElementById("segunda");
-    const terminarBtn = document.getElementById("terminar");
-    const descargarBtn = document.getElementById("descargar");
-    const estadoEl = document.getElementById("estado");
-    const infoEl = document.getElementById("info");
-    const siguienteBtn = document.getElementById("siguiente");
-    const rechazoBtn = document.getElementById("rechazo");
+  <script type="module">
+    import { auth, db } from "./firebase.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+    import { collection, getDocs, query, where, doc, addDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-    function renderLucideIcons() {
-      if (window.lucide && typeof window.lucide.createIcons === "function") {
-        window.lucide.createIcons();
+    const listaEl = document.getElementById("lista-evaluaciones");
+    let currentUid = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "login.html"; // redirige si no está logueado
+      } else {
+        currentUid = user.uid;
+        cargarEvaluaciones(user.uid);
       }
-    }
-
-    // 🔎 Escuchar cambios en tiempo real
-    onSnapshot(ref, (snap) => {
-        if (!snap.exists()) return;
-        const data = snap.data();
-
-        infoEl.innerHTML = `<h2>${data.nombre}</h2><p>Método: ${data.metodoEvaluacion}</p>`;
-
-        // Si evaluación pausada
-        if (data.pausada) {
-          document.getElementById("prof-actual").innerHTML = `<i data-lucide='octagon-pause'></i> Evaluación pausada: ${data.mensajePausa}`;
-          document.getElementById("prof-siguiente").innerText = "-";
-          document.getElementById("prof-restantes").innerText = "-";
-          estadoEl.innerHTML = "<i data-lucide='octagon-pause'></i> Evaluación pausada.";
-          renderLucideIcons();
-          document.getElementById("pausar").style.display = "none";
-          document.getElementById("reanudar").style.display = "inline-block";
-          return; // detenemos aquí para no mostrar estudiantes
-        } else {
-          document.getElementById("pausar").style.display = "inline-block";
-          document.getElementById("reanudar").style.display = "none";
-        }
-
-        // Si evaluación finalizada
-        if (data.finalizada) {
-            siguienteBtn.disabled = true;
-            rechazoBtn.disabled = true;
-            segundaBtn.style.display = "none";
-            terminarBtn.style.display = "none";
-            descargarBtn.style.display = "block";
-            estadoEl.innerText = "🏁 Evaluación finalizada. Puedes descargar la lista de reprobados.";
-            document.getElementById("prof-actual").innerText = "Evaluación terminada";
-            document.getElementById("prof-siguiente").innerText = "-";
-            document.getElementById("prof-restantes").innerText = "0";
-            return;
-        }
-        // Mostrar botón de segunda vuelta en modo doble-llamado
-        if (data.metodoEvaluacion === "doble-llamado" &&
-                (data.rechazadosPrimeraVuelta || []).length > 0 &&
-                (!data.segundaVuelta || data.segundaVuelta.length === 0)) {
-            segundaBtn.style.display = "block";
-        } else {
-            segundaBtn.style.display = "none";
-        }
-
-        // Control de fin de lista
-        const listaActual = data.listaEstudiantes || [];
-        const indice = data.actual || 0;
-
-        const actualEst = listaActual[indice] || "Ninguno";
-        const siguienteEst = listaActual[indice + 1] || "Ninguno";
-        const restantes = Math.max(listaActual.length - (indice + 1), 0);
-
-        document.getElementById("prof-actual").innerText = actualEst;
-        document.getElementById("prof-siguiente").innerText = siguienteEst;
-        document.getElementById("prof-restantes").innerText = restantes;
-
-        if (indice >= listaActual.length) {
-            siguienteBtn.disabled = true;
-            rechazoBtn.disabled = true;
-            terminarBtn.style.display = "block";
-        } else {
-            siguienteBtn.disabled = false;
-            rechazoBtn.disabled = false;
-            terminarBtn.style.display = "none";
-        }
     });
 
-    // ➡️ Avanzar estudiante
-    siguienteBtn.onclick = async () => {
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
-        const data = snap.data();
+    async function cargarEvaluaciones(uid) {
+      listaEl.innerHTML = "";
 
-        await updateDoc(ref, { actual: data.actual + 1 });
-        estadoEl.innerHTML = "<i data-lucide='arrow-right'></i> Avanzaste al siguiente estudiante.";
-        window.lucide.createIcons();
+      const q = query(collection(db, "evaluaciones"), where("owner", "==", uid));
+      const snapshot = await getDocs(q);
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const li = document.createElement("li");
+        li.className = "item";
+        li.innerHTML = `
+          <button onclick="window.togglePrivada('${docSnap.id}', ${data.privada})">
+            <i data-lucide="${data.privada ? 'eye-off' : 'eye'}"></i>
+          </button>
+          <strong>${data.nombre || docSnap.id}</strong>
+          <div class="botones-grid">
+            <button onclick="window.location.href='evaluacion.html?id=${docSnap.id}'"><i data-lucide="play"></i></button>
+            <button onclick="window.editarEvaluacion('${docSnap.id}')"><i data-lucide="edit"></i></button>
+            <button onclick="window.duplicarEvaluacion('${docSnap.id}')"><i data-lucide="copy"></i></button>
+            <button onclick="window.eliminarEvaluacion('${docSnap.id}')"><i data-lucide="trash-2"></i></button>
+          </div>
+        `;
+        listaEl.appendChild(li);
+      });
+
+      window.lucide.createIcons();
+    }
+
+    window.editarEvaluacion = (id) => {
+      window.location.href = `editar.html?id=${id}`;
     };
 
-    // X Marcar rechazo
-    rechazoBtn.onclick = async () => {
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
-        const data = snap.data();
+    window.duplicarEvaluacion = async (id) => {
+      const ref = doc(db, "evaluaciones", id);
+      const snap = await getDocs(collection(db, "evaluaciones"));
+      const original = snap.docs.find(d => d.id === id);
+      if (!original) return;
+      const data = original.data();
 
-        const estudianteActual = data.listaEstudiantes[data.actual];
-        if (!estudianteActual) return;
+      await addDoc(collection(db, "evaluaciones"), {
+        nombre: "Copia de " + data.nombre,
+        listaEstudiantes: data.listaEstudiantes,
+        metodoEvaluacion: data.metodoEvaluacion,
+        actual: 0,
+        rechazadosPrimeraVuelta: [],
+        segundaVuelta: [],
+        reprobados: [],
+        finalizada: false,
+        owner: currentUid
+      });
 
-        if (data.metodoEvaluacion === "un-llamado" || data.metodoEvaluacion === "voluntarios") {
-            const nuevosReprobados = [...(data.reprobados || []), estudianteActual];
-            await updateDoc(ref, { reprobados: nuevosReprobados, actual: data.actual + 1 });
-        }
-
-        if (data.metodoEvaluacion === "doble-llamado") {
-            if ((data.segundaVuelta || []).length > 0) {
-                const nuevosReprobados = [...(data.reprobados || []), estudianteActual];
-                await updateDoc(ref, { reprobados: nuevosReprobados, actual: data.actual + 1 });
-            } else {
-                const nuevosRechazados = [...(data.rechazadosPrimeraVuelta || []), estudianteActual];
-                await updateDoc(ref, { rechazadosPrimeraVuelta: nuevosRechazados, actual: data.actual + 1 });
-            }
-        }
-
-        estadoEl.innerHTML = `<i data-lucide='x'></i> ${estudianteActual} marcado como rechazo.`;
-        renderLucideIcons();
+      alert("✅ Evaluación duplicada correctamente.");
+      if (currentUid) cargarEvaluaciones(currentUid);
     };
 
-    // 🔄 Iniciar segunda vuelta
-    segundaBtn.onclick = async () => {
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
-        const data = snap.data();
-        await updateDoc(ref, {
-            listaEstudiantes: data.rechazadosPrimeraVuelta,
-            segundaVuelta: data.rechazadosPrimeraVuelta,
-            actual: 0,
-            rechazadosPrimeraVuelta: []
-        });
-        estadoEl.innerHTML = "<i data-lucide='refresh-cw'></i> Segunda vuelta iniciada.";
-        renderLucideIcons();
+    window.eliminarEvaluacion = async (id) => {
+      if (!confirm("¿Estás seguro de que quieres eliminar esta evaluación?")) return; 
+      await deleteDoc(doc(db, "evaluaciones", id));
+      if (currentUid) cargarEvaluaciones(currentUid);
     };
 
-    // 🏁 Terminar evaluación
-    terminarBtn.onclick = async () => {
-        await updateDoc(ref, { finalizada: true });
-        estadoEl.innerHTML = "<i data-lucide='flag-checkered'></i> Evaluación finalizada.";
-        renderLucideIcons();
+    window.togglePrivada = async (id, estadoActual) => {
+      await updateDoc(doc(db, "evaluaciones", id), { privada: !estadoActual });
+      cargarEvaluaciones(currentUid); // refresca lista
     };
 
-    // 📥 Descargar reprobados en TXT
-    descargarBtn.onclick = async () => {
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
-        const data = snap.data();
-        const reprobados = data.reprobados || [];
-
-        let contenido = "Lista de reprobados\n-------------------\n";
-        reprobados.forEach(nombre => {
-            contenido += `${nombre}\n`;
-        });
-
-        const blob = new Blob([contenido], { type: "text/plain;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `reprobados_${data.nombre}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
+    document.getElementById("crear").onclick = () => {
+      window.location.href = "crear.html";
     };
-
-// ⏸️ Pausar evaluación (clic o Enter en el input)
-const mensajeInput = document.getElementById("mensajePausa");
-
-async function activarPausa() {
-  const mensaje = mensajeInput.value || "Evaluación en pausa";
-  await updateDoc(ref, { pausada: true, mensajePausa: mensaje });
-  estadoEl.innerHTML = "<i data-lucide='octagon-pause'></i> Evaluación pausada.";
-  renderLucideIcons();
-  document.getElementById("pausar").style.display = "none";
-  document.getElementById("reanudar").style.display = "inline-block";
-}
-
-// Clic en botón Pausar
-document.getElementById("pausar").onclick = activarPausa;
-
-// Enter en cuadro de mensaje
-mensajeInput.addEventListener("keypress", async (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    await activarPausa();
-  }
-});
-
-// ➡️ Botón para actualizar mensaje de pausa
-document.getElementById("actualizarPausa").onclick = async () => {
-  const mensaje = mensajeInput.value || "Evaluación en pausa";
-  await updateDoc(ref, { pausada: true, mensajePausa: mensaje });
-  estadoEl.innerHTML = "<i data-lucide='octagon-pause'></i> Mensaje de pausa actualizado.";
-  renderLucideIcons();
-};
-
-// ▶️ Reanudar evaluación
-document.getElementById("reanudar").onclick = async () => {
-  await updateDoc(ref, { pausada: false, mensajePausa: "" });
-  estadoEl.innerHTML = "<i data-lucide='play'></i> Evaluación reanudada.";
-  renderLucideIcons();
-  document.getElementById("pausar").style.display = "inline-block";
-  document.getElementById("reanudar").style.display = "none";
-  mensajeInput.value = ""; // limpiar el campo al reanudar
-};
-
-    // ⬅️ Volver al inicio
-    document.getElementById("volver").onclick = () => {
-        window.location.href = "homepage.html";
-    };
-
-    window.lucide.createIcons();
-</script>
+  </script>
 </body>
 </html>

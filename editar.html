@@ -1,104 +1,186 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <meta charset="UTF-8">
   <title>Editar Evaluación</title>
   <link rel="stylesheet" href="crear.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+
+<header style="display:flex;align-items:center;justify-content:space-between;background-color:#000032;color:#fff;padding:10px 20px;">
+  <div class="logo">
+    <img src="isologo.png" alt="Isologo" style="height:40px;">
+  </div>
+  <h1 style="flex:1;text-align:center;margin:0;font-size:20px;color:#fff;">Editar evaluación</h1>
+  <button onclick="window.location.href='index.html'" style="background:none;border:none;cursor:pointer;color:#fff;">
+    <i data-lucide="log-out"></i>
+  </button>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>lucide.createIcons();</script>
+</header>
+
 <body>
   <div class="container">
-    <h1>Editar evaluación</h1>
+    <!-- Header incluirá el título -->
 
-    <!-- Nombre de la evaluación -->
-    <label for="nombre">Nombre de la evaluación:</label><br>
-    <input type="text" id="nombre" class="input"><br><br>
+    <!-- Nombre y ShortID -->
+    <label for="nombreEval">Nombre de la evaluación:</label>
+    <input type="text" id="nombreEval">
 
-    <!-- Ingresar manualmente -->
-    <label for="manual">Lista de estudiantes (separada por comas):</label><br>
-    <textarea id="manual" rows="4" cols="40"></textarea><br><br>
+    <label for="shortId">Código para estudiantes (ShortID):</label>
+    <input type="text" id="shortId" placeholder="ej: mat2026">
+
+    <!-- Lista manual -->
+    <label for="listaManual">Lista de estudiantes (un estudiante por línea):</label>
+    <textarea id="listaManual" rows="6"></textarea>
+
+    <!-- Subir lista -->
+    <label for="archivoLista">Subir lista de estudiantes (CSV/XLSX):</label>
+    <input type="file" id="archivoLista" accept=".csv,.xlsx">
 
     <!-- Método de evaluación -->
-    <h2>Método de evaluación</h2>
-    <label><input type="radio" name="metodo" value="un-llamado"> Un llamado</label><br>
-    <label><input type="radio" name="metodo" value="voluntarios"> Lista de voluntarios</label><br>
-    <textarea id="voluntarios" rows="3" cols="40" placeholder="Lista de voluntarios (si aplica)" style="display:none;"></textarea><br>
-    <label><input type="radio" name="metodo" value="doble-llamado"> Doble llamado</label><br>
+    <div class="metodo">
+      <div class="col-izq">
+        <h3>Método obligatorio</h3>
+        <label><input type="radio" name="metodo" value="un-llamado"> Un llamado</label><br>
+        <label><input type="radio" name="metodo" value="doble-llamado"> Doble llamado</label>
+      </div>
+      <div class="col-der">
+        <h3>Opciones adicionales</h3>
+        <label><input type="checkbox" id="intercalar"> Intercalar inicio y final</label><br>
+        <label><input type="checkbox" id="voluntarios"> Lista de voluntarios</label><br>
+        <textarea id="voluntariosBox" rows="4" placeholder="Un voluntario por línea" style="display:none;"></textarea><br>
+        <label><input type="checkbox" id="aleatorizar"> Aleatorizar lista</label>
+      </div>
+    </div>
 
-    <br>
+    <!-- Botones -->
     <button id="guardar" class="btn btn-green"><i data-lucide="save"></i> Guardar cambios</button>
     <button id="volver" class="btn btn-blue"><i data-lucide="arrow-left"></i> Volver al inicio</button>
 
-    <div id="estado" class="estado"></div>
+    <div id="estado"></div>
   </div>
 
   <script type="module">
     import { db } from "./firebase.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
     import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+    import * as XLSX from "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm";
 
     const auth = getAuth();
-    const voluntariosBox = document.getElementById("voluntarios");
-    document.querySelectorAll("input[name='metodo']").forEach(radio => {
-      radio.addEventListener("change", () => {
-        voluntariosBox.style.display = (radio.value === "voluntarios" && radio.checked) ? "block" : "none";
-      });
-    });
-
     const params = new URLSearchParams(window.location.search);
     const evalId = params.get("id");
     const ref = doc(db, "evaluaciones", evalId);
 
-    let listaFinal = [];
+    // Mostrar/ocultar voluntarios
+    document.getElementById("voluntarios").addEventListener("change", (e) => {
+      document.getElementById("voluntariosBox").style.display = e.target.checked ? "block" : "none";
+    });
 
-    // 🔎 Cargar datos existentes
+    // Procesar archivo CSV/XLSX
+    async function procesarArchivo(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          const nombres = rows.flat().map(s => String(s).trim()).filter(s => s);
+          resolve(nombres);
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Intercalar inicio y final
+    function intercalarLista(lista) {
+      const resultado = [];
+      let i = 0, j = lista.length - 1;
+      while (i <= j) {
+        if (i === j) resultado.push(lista[i]);
+        else {
+          resultado.push(lista[i]);
+          resultado.push(lista[j]);
+        }
+        i++; j--;
+      }
+      return resultado;
+    }
+
+    // Aplicar voluntarios
+    function aplicarVoluntarios(lista, voluntarios) {
+      const setVol = new Set(voluntarios);
+      const resto = lista.filter(est => !setVol.has(est));
+      return [...voluntarios, ...resto];
+    }
+
+    // Cargar datos existentes
     async function cargarDatos() {
       const snap = await getDoc(ref);
       if (!snap.exists()) {
-        document.getElementById("estado").innerHTML = '<i data-lucide="alert-triangle"></i> Evaluación no encontrada.';
-        window.lucide.createIcons();
+        document.getElementById("estado").innerText = "❌ Evaluación no encontrada.";
         return;
       }
       const data = snap.data();
 
-      document.getElementById("nombre").value = data.nombre || "";
-      document.getElementById("manual").value = (data.listaEstudiantes || []).join(", ");
-      document.getElementById("voluntarios").value = (data.listaVoluntarios || []).join(", ");
+      document.getElementById("nombreEval").value = data.nombre || "";
+      document.getElementById("shortId").value = data.shortId || "";
+      document.getElementById("listaManual").value = (data.listaOriginal || []).join("\n");
+      document.getElementById("voluntariosBox").value = (data.listaVoluntarios || []).join("\n");
 
-      // Seleccionar método
+      // Método
       const metodo = data.metodoEvaluacion || "un-llamado";
       document.querySelectorAll("input[name='metodo']").forEach(radio => {
         radio.checked = (radio.value === metodo);
       });
-      voluntariosBox.style.display = (metodo === "voluntarios") ? "block" : "none";
+
+      // Opciones
+      document.getElementById("intercalar").checked = data.intercalar || false;
+      document.getElementById("voluntarios").checked = data.voluntarios || false;
+      document.getElementById("aleatorizar").checked = data.aleatorizar || false;
+      document.getElementById("voluntariosBox").style.display = data.voluntarios ? "block" : "none";
     }
 
     cargarDatos();
 
-    // 💾 Guardar cambios
+    // Guardar cambios
     document.getElementById("guardar").onclick = async () => {
-      const nombreEval = document.getElementById("nombre").value || "Evaluación sin nombre";
-      const lista = document.getElementById("manual").value.split(",").map(s => s.trim()).filter(s => s);
+      const nombreEval = document.getElementById("nombreEval").value.trim() || "Evaluación sin nombre";
+      const shortId = document.getElementById("shortId").value.trim();
+      let listaManual = document.getElementById("listaManual").value.split("\n").map(s => s.trim()).filter(s => s);
+
+      let listaArchivo = [];
+      const file = document.getElementById("archivoLista").files[0];
+      if (file) listaArchivo = await procesarArchivo(file);
+
+      let listaFinal = [...listaManual, ...listaArchivo];
+
       const metodoEval = document.querySelector("input[name='metodo']:checked").value;
-      const voluntarios = document.getElementById("voluntarios").value.split(",").map(s => s.trim()).filter(s => s);
+      const voluntariosChecked = document.getElementById("voluntarios").checked;
+      const voluntariosLista = document.getElementById("voluntariosBox").value.split("\n").map(s => s.trim()).filter(s => s);
 
-      listaFinal = lista;
-
-      if (metodoEval === "voluntarios" && voluntarios.length > 0) {
-        listaFinal = [...voluntarios];
-        lista.forEach(est => {
-          if (!voluntarios.includes(est)) {
-            listaFinal.push(est);
-          }
-        });
+      if (voluntariosChecked && voluntariosLista.length > 0) {
+        listaFinal = aplicarVoluntarios(listaFinal, voluntariosLista);
+      }
+      if (document.getElementById("intercalar").checked) {
+        listaFinal = intercalarLista(listaFinal);
+      }
+      if (document.getElementById("aleatorizar").checked) {
+        listaFinal = listaFinal.sort(() => Math.random() - 0.5);
       }
 
       await updateDoc(ref, {
         nombre: nombreEval,
-        owner: auth.currentUser.uid,
+        shortId: shortId,
         listaEstudiantes: listaFinal,
         listaOriginal: listaFinal,
-        listaVoluntarios: voluntarios,
+        listaVoluntarios: voluntariosLista,
         metodoEvaluacion: metodoEval,
+        intercalar: document.getElementById("intercalar").checked,
+        voluntarios: voluntariosChecked,
+        aleatorizar: document.getElementById("aleatorizar").checked,
         actual: 0, // reiniciamos el índice
         finalizada: false // aseguramos que quede activa
       });
@@ -108,8 +190,9 @@
     };
 
     document.getElementById("volver").onclick = () => {
-      window.location.href = "homepage.html";
+      window.location.href = "profesor.html";
     };
+
     window.lucide.createIcons();
   </script>
 </body>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Estudiante</title>
+  <link rel="stylesheet" href="estudiante.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Logo en el tercio superior -->
+    <div class="logo">
+      <img src="logotipo_estudiante.png" alt="Logo Estudiante" style="max-width: 70%; height: auto;">
+    </div>
+
+    <!-- Campo para ingresar código -->
+    <label for="codigoEval">Ingresar código de evaluación:</label>
+    <input type="text" id="codigoEval" placeholder="Ej: intro2026" style="width: 80%;">
+
+    <!-- Botón para buscar evaluación por código -->
+    <button id="ingresar" class="btn btn-blue" style="width: 90%;">Ingresar</button>
+
+    <!-- Botón para ver evaluaciones disponibles -->
+    <button id="verDisponibles" class="btn btn-blue" style="width: 90%;">Ver evaluaciones disponibles</button>
+
+    <!-- Botón pequeño para volver -->
+    <button id="volver" class="btn btn-gray" style="width:auto; padding:8px 12px; font-size:14px; margin-top:20px;">Volver</button>
+
+    <div id="estado"></div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase.js";
+    import { doc, getDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+    const ingresarBtn = document.getElementById("ingresar");
+    const verBtn = document.getElementById("verDisponibles");
+    const estadoEl = document.getElementById("estado");
+
+    // Buscar evaluación por código
+    ingresarBtn.onclick = async () => {
+      const codigo = document.getElementById("codigoEval").value.trim();
+      if (!codigo) {
+        estadoEl.innerText = "Debes ingresar un código.";
+        return;
+      }
+      const q = query(collection(db, "evaluaciones"), where("shortId", "==", codigo));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        estadoEl.innerText = "Evaluación no encontrada.";
+      } else {
+        const evalId = snap.docs[0].id;
+        const data = snap.docs[0].data();
+        const nombreEval = encodeURIComponent(data.nombre || "Evaluación");
+        window.location.href = `tracking.html?id=${evalId}&nombre=${nombreEval}`;
+      }
+    };
+
+    // Ver evaluaciones disponibles (solo públicas)
+    verBtn.onclick = async () => {
+      const q = query(collection(db, "evaluaciones"), where("privada", "==", false));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        estadoEl.innerText = "⚠️ No hay evaluaciones disponibles.";
+      } else {
+        // Redirige a listado de evaluaciones (student-homepage.html)
+        window.location.href = "lista.html";
+      }
+    };
+
+    // Volver al index
+    document.getElementById("volver").onclick = () => {
+      window.location.href = "index.html";
+    };
+
+    window.lucide.createIcons();
+  </script>
+</body>
+</html>

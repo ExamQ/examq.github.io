@@ -17,44 +17,76 @@ h1 {
   margin-bottom: 20px;
 }
 
-textarea {
-  width: 90%;
-  font-size: 16px;
-  padding: 10px;
+ul {
+  list-style: none;
+  padding: 0;
 }
 
-.btn {
-  display: block;
-  width: 100%;
-  padding: 15px;
-  margin: 10px 0;
-  font-size: 18px;
-  border: none;
+.item {
+  display: flex;
+  justify-content: space-between; /* nombre a la izquierda, botones a la derecha */
+  align-items: center;
+  background: #fff;
+  border: 1px solid #ddd;
   border-radius: 8px;
-  cursor: pointer;
+  padding: 10px;
+  margin: 10px 0;
+  position: relative;
 }
 
-.btn-blue { background-color: #3498db; color: white; }
-.btn-green { background-color: #2ecc71; color: white; }
-.btn-red { background-color: #e74c3c; color: white; }
-.btn-orange { background-color: #f39c12; color: white; }
+.item > button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
 
-.estado {
-  margin-top: 20px;
+.item strong {
+  flex: 1;
+  text-align: left;
   font-size: 18px;
   font-weight: bold;
 }
 
-.pausa-input {
-  display: flex;
-  align-items: center;
+/* Bloque de botones a la derecha */
+.botones-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 50px);
+  grid-template-rows: repeat(2, 50px);
+  gap: 5px;
 }
 
-.pausa-input input {
-  flex: 1; /* el input ocupa todo el ancho disponible */
+.botones-grid button {
+  width: 50px;
+  height: 50px;
+  border: none;
+  background: #eee;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
-.btn-small {
-  padding: 1px 1px;
-  font-size: 1em;
+.botones-grid button:hover {
+  background: #ddd;
+}
+
+/* Botón crear */
+.btn {
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+  border: none;
+}
+
+.btn-green {
+  background-color: #2ecc71;
+  color: #fff;
+}
+
+.btn-green:hover {
+  background-color: #27ae60;
 }

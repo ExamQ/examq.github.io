@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Evaluaciones disponibles</title>
+  <link rel="stylesheet" href="estudiante.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Logo superior -->
+    <div class="logo">
+      <img src="logotipo_estudiante.png" alt="Logo Estudiante" style="max-width: 70%; margin: 40px auto; display:block;">
+    </div>
+
+    <h2>Evaluaciones disponibles</h2>
+
+    <!-- Lista de evaluaciones -->
+    <ul id="lista-evaluaciones" class="lista-evaluaciones"></ul>
+
+    <!-- Botón volver -->
+    <button id="volver" class="btn btn-gray">Volver</button>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase.js";
+    import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+    const ul = document.getElementById("lista-evaluaciones");
+
+    async function cargarEvaluaciones() {
+      const q = query(collection(db, "evaluaciones"), where("privada", "==", false));
+      const snap = await getDocs(q);
+
+      ul.innerHTML = "";
+
+      if (snap.empty) {
+        const li = document.createElement("li");
+        li.className = "item";
+        li.innerText = "No hay evaluaciones disponibles.";
+        ul.appendChild(li);
+        return;
+      }
+
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const li = document.createElement("li");
+        li.className = "item";
+
+        const nombre = document.createElement("span");
+        nombre.className = "nombre";
+        nombre.innerText = data.nombre || "Evaluación sin nombre";
+
+        const boton = document.createElement("button");
+        boton.className = "btn btn-blue abrir";
+        boton.innerText = "Abrir";
+        boton.onclick = () => {
+          const nombreEval = encodeURIComponent(data.nombre || "Evaluación");
+          window.location.href = `tracking.html?id=${docSnap.id}&nombre=${nombreEval}`;
+        };
+
+        li.appendChild(nombre);
+        li.appendChild(boton);
+        ul.appendChild(li);
+      });
+    }
+
+    cargarEvaluaciones();
+
+    document.getElementById("volver").onclick = () => {
+      window.location.href = "estudiante.html";
+    };
+  </script>
+</body>
+</html>
