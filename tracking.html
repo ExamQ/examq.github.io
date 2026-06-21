@@ -13,21 +13,23 @@
   </div>
 
   <!-- Nombre de la evaluación centrado -->
-  <h1 style="flex:1;text-align:center;margin:0;font-size:20px;color:#fff;">
-    <!-- Se rellena dinámicamente con el nombre -->
-    <script>
-      const params = new URLSearchParams(window.location.search);
-      document.currentScript.parentElement.textContent = params.get("nombre") || "Evaluación";
-    </script>
-  </h1>
+  <h1 id="eval-title" style="flex:1;text-align:center;margin:0;font-size:20px;color:#fff;"></h1>
 
   <!-- Botón volver -->
   <button onclick="window.location.href='estudiante.html'" style="background:none;border:1px solid #fff;border-radius:4px;width:40px;height:40px;cursor:pointer;color:#fff;">
     <i data-lucide="arrow-left"></i>
   </button>
+
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script>lucide.createIcons();</script>
+  <script>
+    // Render icons
+    lucide.createIcons();
+    // Leer nombre desde querystring
+    const queryParams = new URLSearchParams(window.location.search);
+    document.getElementById("eval-title").textContent = queryParams.get("nombre") || "Evaluación";
+  </script>
 </header>
+
 
 <body>
   <!-- Header reservado -->
@@ -67,49 +69,67 @@
     </div>
   </div>
 
+  <div id="pause-overlay" class="pause-overlay" hidden>
+    <div id="pause-message" class="pause-message">⏸️ Evaluación pausada</div>
+  </div>
+
   <script type="module">
     import { db } from "./firebase.js";
-    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+    import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
     const params = new URLSearchParams(window.location.search);
     const evalId = params.get("id");
     const ref = doc(db, "evaluaciones", evalId);
+    const grid = document.querySelector(".grid-container");
+    const pauseOverlay = document.getElementById("pause-overlay");
+    const pauseMessage = document.getElementById("pause-message");
 
-    async function cargarEvaluacion() {
-      const snap = await getDoc(ref);
-      if (!snap.exists()) return;
-      const data = snap.data();
+    function actualizarVista(data) {
+      const lista = Array.isArray(data.listaEstudiantes) ? data.listaEstudiantes : [];
+      const indice = Number.isFinite(data.actual) ? data.actual : 0;
+      const isPaused = data.pausada === true;
+      const pausaMensaje = data.mensajePausa || "Evaluación pausada";
 
-      // Actual
+      if (isPaused) {
+        grid.style.display = "none";
+        pauseOverlay.hidden = false;
+        pauseOverlay.style.display = "flex";
+        pauseMessage.innerText = pausaMensaje;
+        return;
+      }
+
+      grid.style.display = "grid";
+      pauseOverlay.hidden = true;
+      pauseOverlay.style.display = "none";
+      pauseMessage.innerText = "";
+
       document.getElementById("actual-content").innerText =
-        data.listaEstudiantes[data.actual] || "Nadie en turno";
-
-      // Siguiente
+        lista[indice] || "Nadie en turno";
       document.getElementById("siguiente-content").innerText =
-        data.listaEstudiantes[data.actual + 1] || "Sin siguiente";
+        lista[indice + 1] || "Sin siguiente";
 
-      // Próximos
-      const proximos = data.listaEstudiantes.slice(data.actual + 2, data.actual + 6);
+      const proximos = lista.slice(indice + 2, indice + 6);
       document.getElementById("proximos-content").innerHTML =
         proximos.map(n => `<div>${n}</div>`).join("") || "Sin próximos";
 
-      // Restantes
-      const restantes = data.listaEstudiantes.length - (data.actual + 1);
+      const restantes = Math.max(lista.length - (indice + 1), 0);
       document.getElementById("restantes-content").innerText = `Quedan ${restantes}`;
 
-      // Segunda vuelta
       if (data.metodoEvaluacion === "doble-llamado") {
-        document.querySelector(".grid-container").classList.remove("no-segunda");
+        grid.classList.remove("no-segunda");
         document.getElementById("segunda-vuelta").style.display = "block";
         document.getElementById("segunda-content").innerText =
-          data.segundaVuelta.length || 0;
+          (Array.isArray(data.segundaVuelta) ? data.segundaVuelta.length : 0);
       } else {
-        document.querySelector(".grid-container").classList.add("no-segunda");
+        grid.classList.add("no-segunda");
         document.getElementById("segunda-vuelta").style.display = "none";
       }
     }
 
-    cargarEvaluacion();
+    onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      actualizarVista(snap.data());
+    });
   </script>
 </body>
 </html>

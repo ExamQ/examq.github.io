@@ -16,6 +16,26 @@ body, html {
   padding: 10px;
 }
 
+/* Overlay para pantalla de pausa */
+.pause-overlay {
+  position: fixed;
+  inset: 0;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.pause-message {
+  color: #000032;
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: bold;
+  text-align: center;
+  padding: 24px;
+  max-width: 90%;
+}
+
 /* Layout vertical (portrait) */
 @media (orientation: portrait) {
   .grid-container {
